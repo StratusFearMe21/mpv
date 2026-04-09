@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <libswscale/swscale.h>
 #include <chafa.h>
 
 #include "config.h"
