@@ -426,8 +426,7 @@ static void flip_page(struct vo *vo)
     for (int i = 0; output [i]; i++)
     {
         // Go to the offset row and column, then display the image
-        gchar pos_buf[64];
-        g_snprintf(pos_buf, sizeof(pos_buf), TERM_ESC_GOTO_YX, priv->top + i , priv->left);
+        char *pos_buf = mp_tprintf(64, TERM_ESC_GOTO_YX, priv->top + i , priv->left);
         chafa_strwrite(pos_buf);
 
         chafa_write(output[i]->str, output[i]->len, stdout);
