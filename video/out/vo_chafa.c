@@ -447,9 +447,9 @@ static int preinit(struct vo *vo)
     priv->config = NULL;
     priv->symbol_map = NULL;
 
-    ChafaTermDb *term_db = chafa_term_db_new();
-    priv->term_info = chafa_term_db_detect(term_db, g_get_environ());
-    chafa_term_db_unref(term_db);
+    gchar **envp = g_get_environ();
+    priv->term_info = chafa_term_db_detect(chafa_term_db_get_default (), envp);
+    g_strfreev (envp);
 
     // Comment from Chafa repo
     /* Chafa may create and destroy GThreadPools multiple times while rendering
