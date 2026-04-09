@@ -423,6 +423,7 @@ static void flip_page(struct vo *vo)
 
     chafa_canvas_print_rows(priv->canvas, priv->term_info, &output, &rows);
 
+    chafa_strwrite(TERM_ESC_SYNC_UPDATE_BEGIN);
 
     for (int i = 0; output [i]; i++)
     {
@@ -432,6 +433,8 @@ static void flip_page(struct vo *vo)
 
         chafa_write(output[i]->str, output[i]->len, stdout);
     }
+
+    chafa_strwrite(TERM_ESC_SYNC_UPDATE_END);
 
     chafa_free_gstring_array (output);
 }
