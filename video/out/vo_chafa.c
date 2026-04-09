@@ -526,7 +526,7 @@ const struct vo_driver video_out_chafa = {
             {"fgbg", CHAFA_CANVAS_MODE_FGBG},
             {"8", CHAFA_CANVAS_MODE_INDEXED_8},
             {"16-8", CHAFA_CANVAS_MODE_INDEXED_16_8})},
-        {"dither-mode", OPT_CHOICE(opts.dither_mode,
+        {"dither", OPT_CHOICE(opts.dither_mode,
             {"none", CHAFA_DITHER_MODE_NONE},
             {"ordered", CHAFA_DITHER_MODE_ORDERED},
             {"diffusion", CHAFA_DITHER_MODE_DIFFUSION},
