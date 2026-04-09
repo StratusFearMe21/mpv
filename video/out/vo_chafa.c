@@ -33,8 +33,6 @@
 #include "video/sws_utils.h"
 #include "video/mp_image.h"
 
-#define IMGFMT IMGFMT_RGB24
-
 #define TERMINAL_FALLBACK_COLS      80
 #define TERMINAL_FALLBACK_ROWS      25
 #define TERMINAL_FALLBACK_PX_WIDTH  320
@@ -61,6 +59,7 @@ struct priv {
     ChafaCanvasConfig *config;
     ChafaSymbolMap *symbol_map;
     ChafaTermInfo *term_info;
+    ChafaPixelType pixel_type;
     bool skip_frame_draw;
 
     int left, top;  // image origin cell (1 based)
@@ -240,7 +239,7 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
     priv->sws->src.w = mp_rect_w(priv->src_rect);
     priv->sws->src.h = mp_rect_h(priv->src_rect);
     priv->sws->dst = (struct mp_image_params) {
-        .imgfmt = IMGFMT,
+        .imgfmt = params->imgfmt,
         .w = priv->width,
         .h = priv->height,
         .p_w = 1,
@@ -249,7 +248,7 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
 
     dealloc_canvas_and_buffers(vo);
 
-    priv->frame = mp_image_alloc(IMGFMT, priv->width, priv->height);
+    priv->frame = mp_image_alloc(params->imgfmt, priv->width, priv->height);
     if (!priv->frame)
         return -1;
 
@@ -292,6 +291,28 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
         chafa_symbol_map_add_by_tags(priv->symbol_map, CHAFA_SYMBOL_TAG_ALL);
     }
     chafa_canvas_config_set_symbol_map(priv->config, priv->symbol_map);
+
+    switch (params->imgfmt)
+    {
+        case IMGFMT_RGBA:
+            priv->pixel_type = CHAFA_PIXEL_RGBA8_UNASSOCIATED;
+            break;
+        case IMGFMT_BGRA:
+            priv->pixel_type = CHAFA_PIXEL_BGRA8_UNASSOCIATED;
+            break;
+        case IMGFMT_ARGB:
+            priv->pixel_type = CHAFA_PIXEL_ARGB8_UNASSOCIATED;
+            break;
+        case IMGFMT_RGB24:
+            priv->pixel_type = CHAFA_PIXEL_RGB8;
+            break;
+        case IMGFMT_BGR24:
+            priv->pixel_type = CHAFA_PIXEL_BGR8;
+            break;
+        default:
+            MP_ERR(vo, "Image format is not supported");
+            return -1;
+    }
 
     // Create canvas
     priv->canvas = chafa_canvas_new(priv->config);
@@ -380,7 +401,7 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
 
     // Draw to Chafa canvas
     chafa_canvas_draw_all_pixels(priv->canvas,
-                                   CHAFA_PIXEL_RGB8,
+                                   priv->pixel_type,
                                    priv->frame->planes[0],
                                    priv->width,
                                    priv->height,
@@ -461,7 +482,11 @@ static int preinit(struct vo *vo)
 
 static int query_format(struct vo *vo, int format)
 {
-    return format == IMGFMT;
+    return format == IMGFMT_RGBA
+        || format == IMGFMT_BGRA
+        || format == IMGFMT_ARGB
+        || format == IMGFMT_RGB24
+        || format == IMGFMT_BGR24;
 }
 
 static int control(struct vo *vo, uint32_t request, void *data)
