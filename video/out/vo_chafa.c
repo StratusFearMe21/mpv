@@ -213,11 +213,13 @@ static void set_chafa_output_parameters(struct vo *vo)
     int pwidth = vo->dwidth > 0 ? vo->dwidth : 1;
     int pheight = vo->dheight > 0 ? vo->dheight : 1;
 
+    priv->width_cells = priv->num_cols;
+    priv->height_cells = priv->num_rows;
+
     // priv->width_cells and priv->height_cells are the width and height of dst_rect
     // and they are not changed anywhere else outside this function.
     // It is the chafa image output dimension which is output by chafa.
-    priv->width_cells = priv->num_cols * priv->width / pwidth;
-    priv->height_cells = priv->num_rows * priv->height / pheight;
+    chafa_calc_canvas_geometry(priv->width, priv->height, &priv->width_cells, &priv->height_cells, 0.5, TRUE, FALSE);
 
     // top/left values must be greater than 1. If it is set, then
     // the image will be rendered from there and no further centering is done.
@@ -425,7 +427,7 @@ static void flip_page(struct vo *vo)
     for (int i = 0; output [i]; i++)
     {
         // Go to the offset row and column, then display the image
-        char *pos_buf = mp_tprintf(64, TERM_ESC_GOTO_YX, priv->top + i , priv->left);
+        char *pos_buf = mp_tprintf(64, TERM_ESC_GOTO_YX, priv->top + i, priv->left);
         chafa_strwrite(pos_buf);
 
         chafa_write(output[i]->str, output[i]->len, stdout);
