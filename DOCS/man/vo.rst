@@ -675,16 +675,16 @@ Available video output drivers are:
         Selects the dither algorithm which chafa should apply.
         Can be one of the below list.
 
-        none
+        none (Default)
             Don't diffuse
-        ordered (Default)
+        ordered
             Ordered dithering (Bayer or similar).
         diffusion
             Error diffusion dithering (Floyd-Steinberg or similar).
         noise
             Error diffusion dithering (Floyd-Steinberg or similar).
 
-    ``--vo-chafa-work-factor=<work_factor>`` (default: 100)
+    ``--vo-chafa-work-factor=<work_factor>`` (default: 50)
         Sets the work/quality tradeoff factor. A higher value means more time and memory will be spent towards a higher quality output.
 
 ``image``
