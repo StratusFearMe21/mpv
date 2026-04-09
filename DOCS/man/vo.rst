@@ -579,8 +579,7 @@ Available video output drivers are:
         on every frame and will have better quality.
 
 ``chafa``
-    Graphical output for the terminal, using chafa. Tested with ``ghostty`` and
-    ``foot``.
+    Graphical output for the terminal, using chafa.
 
     Note: the image output is not synchronized with other terminal
     output from mpv, which can lead to broken images.
@@ -588,14 +587,8 @@ Available video output drivers are:
 
     You may need to use ``--profile=sw-fast`` to get decent performance.
 
-    When the pixel mode is set to ``sixels``, chafa needs to know the terminal
-    size both in cells and in pixels. By default it tries to use values which
-    the terminal reports, however, due to differences between terminals this is
-    an error-prone process which cannot be automated with certainty - some
-    terminals report the size in pixels including the padding - e.g. ``xterm``,
-    while others report the actual usable number of pixels - like ``mlterm``.
-    Additionally, they may behave differently when maximized or in fullscreen,
-    and mpv cannot detect this state using standard methods.
+    When the pixel mode is set to ``sixels``, chafa has the same caveats that the
+    ``sixel`` VO has. See those.
 
     Sixel size and alignment options:
 
