@@ -49,8 +49,60 @@ struct vo_chafa_opts {
     bool config_clear, alt_screen;
 };
 
+#define OPT_BASE_STRUCT struct vo_chafa_opts
+
+static const struct m_sub_options vo_chafa_conf = {
+    .opts = (const m_option_t[]) {
+        {"width", OPT_INT(width)},
+        {"height", OPT_INT(height)},
+        {"pixel-mode", OPT_CHOICE(pixel_mode,
+            {"symbols", CHAFA_PIXEL_MODE_SYMBOLS},
+            {"sixels", CHAFA_PIXEL_MODE_SIXELS},
+            {"kitty", CHAFA_PIXEL_MODE_KITTY},
+            {"iterm2", CHAFA_PIXEL_MODE_ITERM2})},
+        {"canvas-mode", OPT_CHOICE(canvas_mode,
+            {"truecolor", CHAFA_CANVAS_MODE_TRUECOLOR},
+            {"256", CHAFA_CANVAS_MODE_INDEXED_256},
+            {"240", CHAFA_CANVAS_MODE_INDEXED_240},
+            {"16", CHAFA_CANVAS_MODE_INDEXED_16},
+            {"fgbg-bgfg", CHAFA_CANVAS_MODE_FGBG_BGFG},
+            {"fgbg", CHAFA_CANVAS_MODE_FGBG},
+            {"8", CHAFA_CANVAS_MODE_INDEXED_8},
+            {"16-8", CHAFA_CANVAS_MODE_INDEXED_16_8})},
+        {"dither", OPT_CHOICE(dither_mode,
+            {"none", CHAFA_DITHER_MODE_NONE},
+            {"ordered", CHAFA_DITHER_MODE_ORDERED},
+            {"diffusion", CHAFA_DITHER_MODE_DIFFUSION},
+            {"noise", CHAFA_DITHER_MODE_NOISE})},
+        {"work-factor", OPT_INT(work_factor)},
+        {"top", OPT_INT(top)},
+        {"left", OPT_INT(left)},
+        {"pad-y", OPT_INT(pad_y)},
+        {"pad-x", OPT_INT(pad_x)},
+        {"rows", OPT_INT(rows)},
+        {"cols", OPT_INT(cols)},
+        {"config-clear", OPT_BOOL(config_clear)},
+        {"alt-screen", OPT_BOOL(alt_screen)},
+        {0}
+    },
+    .size = sizeof(struct vo_chafa_opts),
+    .defaults = &(const struct vo_chafa_opts){
+        .pixel_mode = CHAFA_PIXEL_MODE_SYMBOLS,
+        .canvas_mode = CHAFA_CANVAS_MODE_TRUECOLOR,
+        .dither_mode = CHAFA_DITHER_MODE_NONE,
+        .work_factor = 50,
+        .pad_y = -1,
+        .pad_x = -1,
+        .config_clear = true,
+        .alt_screen = true,
+    },
+    .prefix = "vo-chafa",
+    .change_flags = UPDATE_VIDEO
+};
+
+
 struct priv {
-    struct vo_chafa_opts opts;
+    struct m_config_cache *opts_cache;
 
     ChafaCanvas *canvas;
     ChafaCanvasConfig *config;
@@ -106,17 +158,18 @@ static void update_canvas_dimensions(struct vo *vo)
 {
     // this function sets the vo canvas size in pixels vo->dwidth, vo->dheight,
     // and the number of rows and columns available in priv->num_rows/cols
-    struct priv *priv   = vo->priv;
-    int num_rows        = TERMINAL_FALLBACK_ROWS;
-    int num_cols        = TERMINAL_FALLBACK_COLS;
-    int total_px_width  = 0;
-    int total_px_height = 0;
+    struct priv *priv          = vo->priv;
+    struct vo_chafa_opts *opts = priv->opts_cache->opts;
+    int num_rows               = TERMINAL_FALLBACK_ROWS;
+    int num_cols               = TERMINAL_FALLBACK_COLS;
+    int total_px_width         = 0;
+    int total_px_height        = 0;
 
     terminal_get_size2(&num_rows, &num_cols, &total_px_width, &total_px_height);
 
     // If the user has specified rows/cols use them for further calculations
-    num_rows = (priv->opts.rows > 0) ? priv->opts.rows : num_rows;
-    num_cols = (priv->opts.cols > 0) ? priv->opts.cols : num_cols;
+    num_rows = (opts->rows > 0) ? opts->rows : num_rows;
+    num_cols = (opts->cols > 0) ? opts->cols : num_cols;
 
     // If the pad value is set in between 0 and width/2 - 1, then we
     // subtract from the detected width. Otherwise, we assume that the width
@@ -124,17 +177,17 @@ static void update_canvas_dimensions(struct vo *vo)
     // total_width to be an integer multiple of num_cols. So in case the padding
     // added by terminal is less than the number of cells in that axis, then rounding
     // down will take care of correcting the detected width and remove padding.
-    if (priv->opts.width > 0) {
+    if (opts->width > 0) {
         // option - set by the user, hard truth
-        total_px_width = priv->opts.width;
+        total_px_width = opts->width;
     } else {
         if (total_px_width <= 0) {
                 // ioctl failed to read terminal width
                 total_px_width = TERMINAL_FALLBACK_PX_WIDTH;
         } else {
-            if (priv->opts.pad_x >= 0 && priv->opts.pad_x < total_px_width / 2) {
+            if (opts->pad_x >= 0 && opts->pad_x < total_px_width / 2) {
                 // explicit padding set by the user
-                total_px_width -= (2 * priv->opts.pad_x);
+                total_px_width -= (2 * opts->pad_x);
             } else {
                 // rounded "auto padding"
                 total_px_width = total_px_width / num_cols * num_cols;
@@ -142,14 +195,14 @@ static void update_canvas_dimensions(struct vo *vo)
         }
     }
 
-    if (priv->opts.height > 0) {
-        total_px_height = priv->opts.height;
+    if (opts->height > 0) {
+        total_px_height = opts->height;
     } else {
         if (total_px_height <= 0) {
             total_px_height = TERMINAL_FALLBACK_PX_HEIGHT;
         } else {
-            if (priv->opts.pad_y >= 0 && priv->opts.pad_y < total_px_height / 2) {
-                total_px_height -= (2 * priv->opts.pad_y);
+            if (opts->pad_y >= 0 && opts->pad_y < total_px_height / 2) {
+                total_px_height -= (2 * opts->pad_y);
             } else {
                 total_px_height = total_px_height / num_rows * num_rows;
             }
@@ -204,6 +257,7 @@ static void set_chafa_output_parameters(struct vo *vo)
     // and the scaling rectangles in pixels priv->src_rect, priv->dst_rect
     // as well as image positioning in cells priv->top, priv->left.
     struct priv *priv = vo->priv;
+    struct vo_chafa_opts *opts = priv->opts_cache->opts;
 
     vo_get_src_dst_rects(vo, &priv->src_rect, &priv->dst_rect, &priv->osd);
 
@@ -223,15 +277,16 @@ static void set_chafa_output_parameters(struct vo *vo)
 
     // top/left values must be greater than 1. If it is set, then
     // the image will be rendered from there and no further centering is done.
-    priv->top  = (priv->opts.top  > 0) ?  priv->opts.top :
+    priv->top  = (opts->top  > 0) ?  opts->top :
                 priv->num_rows * priv->dst_rect.y0 / pheight;
-    priv->left = (priv->opts.left > 0) ?  priv->opts.left :
+    priv->left = (opts->left > 0) ?  opts->left :
                 priv->num_cols * priv->dst_rect.x0 / pwidth;
 }
 
 static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
 {
     struct priv *priv = vo->priv;
+    struct vo_chafa_opts *opts = priv->opts_cache->opts;
 
     priv->sws->src = *params;
     priv->sws->src.w = mp_rect_w(priv->src_rect);
@@ -261,21 +316,21 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
     chafa_canvas_config_set_geometry(priv->config, canvas_width, canvas_height);
     chafa_canvas_config_set_cell_geometry(priv->config, priv->width / canvas_width, priv->height / canvas_height);
 
-    if (priv->opts.pixel_mode >= 0 && priv->opts.pixel_mode < CHAFA_PIXEL_MODE_MAX) {
-        chafa_canvas_config_set_pixel_mode(priv->config, priv->opts.pixel_mode);
+    if (opts->pixel_mode >= 0 && opts->pixel_mode < CHAFA_PIXEL_MODE_MAX) {
+        chafa_canvas_config_set_pixel_mode(priv->config, opts->pixel_mode);
     }
 
-    if (priv->opts.canvas_mode >= 0 && priv->opts.canvas_mode < CHAFA_CANVAS_MODE_MAX) {
-        chafa_canvas_config_set_canvas_mode(priv->config, priv->opts.canvas_mode);
+    if (opts->canvas_mode >= 0 && opts->canvas_mode < CHAFA_CANVAS_MODE_MAX) {
+        chafa_canvas_config_set_canvas_mode(priv->config, opts->canvas_mode);
     }
 
-    if (priv->opts.dither_mode >= 0 && priv->opts.dither_mode < CHAFA_DITHER_MODE_MAX) {
-        chafa_canvas_config_set_dither_mode(priv->config, priv->opts.dither_mode);
+    if (opts->dither_mode >= 0 && opts->dither_mode < CHAFA_DITHER_MODE_MAX) {
+        chafa_canvas_config_set_dither_mode(priv->config, opts->dither_mode);
     }
 
-    if (priv->opts.work_factor > 0) {
+    if (opts->work_factor > 0) {
         chafa_canvas_config_set_work_factor(priv->config,
-                                        (gfloat)priv->opts.work_factor / 100.0f);
+                                        (gfloat)opts->work_factor / 100.0f);
     }
 
     if (!priv->symbol_map) {
@@ -318,6 +373,7 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
 static int reconfig(struct vo *vo, struct mp_image_params *params)
 {
     struct priv *priv = vo->priv;
+    struct vo_chafa_opts *opts = priv->opts_cache->opts;
     int ret = 0;
     update_canvas_dimensions(vo);
     if (priv->canvas_ok) {  // if too small - succeed but skip the rendering
@@ -325,7 +381,7 @@ static int reconfig(struct vo *vo, struct mp_image_params *params)
         ret = update_chafa_canvas(vo, params);
     }
 
-    if (priv->opts.config_clear)
+    if (opts->config_clear)
         chafa_strwrite(TERM_ESC_CLEAR_SCREEN);
     vo->want_redraw = true;
 
@@ -342,11 +398,14 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     int  prev_height = vo->dheight;
     int  prev_width  = vo->dwidth;
     bool resized     = false;
+    bool opts_changed = m_config_cache_update(priv->opts_cache);
     update_canvas_dimensions(vo);
     if (!priv->canvas_ok)
         goto done;
 
-    if (prev_rows != priv->num_rows || prev_cols != priv->num_cols ||
+    struct vo_chafa_opts *opts = priv->opts_cache->opts;
+
+    if (opts_changed || prev_rows != priv->num_rows || prev_cols != priv->num_cols ||
         prev_width != vo->dwidth || prev_height != vo->dheight)
     {
         set_chafa_output_parameters(vo);
@@ -355,7 +414,7 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
         if (update_chafa_canvas(vo, vo->params) < 0)
             return VO_FALSE;
 
-        if (priv->opts.config_clear)
+        if (opts->config_clear)
             chafa_strwrite(TERM_ESC_CLEAR_SCREEN);
         resized = true;
     }
@@ -440,12 +499,16 @@ static int preinit(struct vo *vo)
 {
     struct priv *priv = vo->priv;
 
+    priv->opts_cache = m_config_cache_alloc(priv, vo->global, &vo_chafa_conf);
+
+    struct vo_chafa_opts *opts = priv->opts_cache->opts;
+
     // Parse opts set by CLI or conf
     priv->sws = mp_sws_alloc(vo);
     priv->sws->log = vo->log;
     mp_sws_enable_cmdline_opts(priv->sws, vo->global);
 
-    if (priv->opts.alt_screen)
+    if (opts->alt_screen)
         chafa_strwrite(TERM_ESC_ALT_SCREEN);
 
     chafa_strwrite(TERM_ESC_HIDE_CURSOR);
@@ -487,18 +550,17 @@ static int control(struct vo *vo, uint32_t request, void *data)
 static void uninit(struct vo *vo)
 {
     struct priv *priv = vo->priv;
+    struct vo_chafa_opts *opts = priv->opts_cache->opts;
 
     chafa_strwrite(TERM_ESC_RESTORE_CURSOR);
     terminal_set_mouse_input(false);
 
-    if (priv->opts.alt_screen)
+    if (opts->alt_screen)
         chafa_strwrite(TERM_ESC_NORMAL_SCREEN);
     fflush(stdout);
 
     dealloc_canvas_and_buffers(vo);
 }
-
-#define OPT_BASE_STRUCT struct priv
 
 const struct vo_driver video_out_chafa = {
     .name = "chafa",
@@ -511,48 +573,5 @@ const struct vo_driver video_out_chafa = {
     .flip_page = flip_page,
     .uninit = uninit,
     .priv_size = sizeof(struct priv),
-    .priv_defaults = &(const struct priv) {
-        .opts.pixel_mode = CHAFA_PIXEL_MODE_SYMBOLS,
-        .opts.canvas_mode = CHAFA_CANVAS_MODE_TRUECOLOR,
-        .opts.dither_mode = CHAFA_DITHER_MODE_NONE,
-        .opts.work_factor = 50,
-        .opts.pad_y = -1,
-        .opts.pad_x = -1,
-        .opts.config_clear = true,
-        .opts.alt_screen = true,
-    },
-    .options = (const m_option_t[]) {
-        {"width", OPT_INT(opts.width)},
-        {"height", OPT_INT(opts.height)},
-        {"pixel-mode", OPT_CHOICE(opts.pixel_mode,
-            {"symbols", CHAFA_PIXEL_MODE_SYMBOLS},
-            {"sixels", CHAFA_PIXEL_MODE_SIXELS},
-            {"kitty", CHAFA_PIXEL_MODE_KITTY},
-            {"iterm2", CHAFA_PIXEL_MODE_ITERM2})},
-        {"canvas-mode", OPT_CHOICE(opts.canvas_mode,
-            {"truecolor", CHAFA_CANVAS_MODE_TRUECOLOR},
-            {"256", CHAFA_CANVAS_MODE_INDEXED_256},
-            {"240", CHAFA_CANVAS_MODE_INDEXED_240},
-            {"16", CHAFA_CANVAS_MODE_INDEXED_16},
-            {"fgbg-bgfg", CHAFA_CANVAS_MODE_FGBG_BGFG},
-            {"fgbg", CHAFA_CANVAS_MODE_FGBG},
-            {"8", CHAFA_CANVAS_MODE_INDEXED_8},
-            {"16-8", CHAFA_CANVAS_MODE_INDEXED_16_8})},
-        {"dither", OPT_CHOICE(opts.dither_mode,
-            {"none", CHAFA_DITHER_MODE_NONE},
-            {"ordered", CHAFA_DITHER_MODE_ORDERED},
-            {"diffusion", CHAFA_DITHER_MODE_DIFFUSION},
-            {"noise", CHAFA_DITHER_MODE_NOISE})},
-        {"work-factor", OPT_INT(opts.work_factor)},
-        {"top", OPT_INT(opts.top)},
-        {"left", OPT_INT(opts.left)},
-        {"pad-y", OPT_INT(opts.pad_y)},
-        {"pad-x", OPT_INT(opts.pad_x)},
-        {"rows", OPT_INT(opts.rows)},
-        {"cols", OPT_INT(opts.cols)},
-        {"config-clear", OPT_BOOL(opts.config_clear)},
-        {"alt-screen", OPT_BOOL(opts.alt_screen)},
-        {0}
-    },
-    .options_prefix = "vo-chafa",
+    .global_opts = &vo_chafa_conf,
 };
