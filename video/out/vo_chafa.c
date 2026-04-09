@@ -263,6 +263,7 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
     int canvas_width = priv->width_cells;
     int canvas_height = priv->height_cells;
     chafa_canvas_config_set_geometry(priv->config, canvas_width, canvas_height);
+    chafa_canvas_config_set_cell_geometry(priv->config, priv->width / canvas_width, priv->height / canvas_height);
 
     // Set pixel mode
     if (priv->opts.pixel_mode >= 0 && priv->opts.pixel_mode < CHAFA_PIXEL_MODE_MAX) {
