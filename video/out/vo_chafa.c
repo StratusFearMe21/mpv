@@ -60,6 +60,7 @@ struct priv {
     ChafaCanvas *canvas;
     ChafaCanvasConfig *config;
     ChafaSymbolMap *symbol_map;
+    ChafaTermInfo *term_info;
     bool skip_frame_draw;
 
     int left, top;  // image origin cell (1 based)
@@ -92,6 +93,11 @@ static void dealloc_canvas_and_buffers(struct vo *vo)
     if (priv->symbol_map) {
         chafa_symbol_map_unref(priv->symbol_map);
         priv->symbol_map = NULL;
+    }
+
+    if (priv->term_info) {
+        chafa_term_info_unref(priv->term_info);
+        priv->term_info = NULL;
     }
 
     if (priv->frame) {
@@ -404,7 +410,7 @@ static void flip_page(struct vo *vo)
         return;
 
     // Generate output from canvas
-    chafa_canvas_print_rows(priv->canvas, NULL, &output, &rows);
+    chafa_canvas_print_rows(priv->canvas, priv->term_info, &output, &rows);
 
 
     for (int i = 0; output [i]; i++)
@@ -439,6 +445,10 @@ static int preinit(struct vo *vo)
     priv->canvas = NULL;
     priv->config = NULL;
     priv->symbol_map = NULL;
+
+    ChafaTermDb *term_db = chafa_term_db_new();
+    priv->term_info = chafa_term_db_detect(term_db, g_get_environ());
+    chafa_term_db_unref(term_db);
 
     // Comment from Chafa repo
     /* Chafa may create and destroy GThreadPools multiple times while rendering
