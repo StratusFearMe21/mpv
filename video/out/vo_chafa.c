@@ -51,10 +51,8 @@ struct vo_chafa_opts {
 };
 
 struct priv {
-    // User specified options
     struct vo_chafa_opts opts;
 
-    // Internal data
     ChafaCanvas *canvas;
     ChafaCanvasConfig *config;
     ChafaSymbolMap *symbol_map;
@@ -210,16 +208,15 @@ static void set_chafa_output_parameters(struct vo *vo)
 
     vo_get_src_dst_rects(vo, &priv->src_rect, &priv->dst_rect, &priv->osd);
 
-    // priv->width and priv->height are the width and height of dst_rect
-    // and they are not changed anywhere else outside this function.
-    // It is the chafa image output dimension which is output by libchafa.
     priv->width  = priv->dst_rect.x1 - priv->dst_rect.x0;
     priv->height = priv->dst_rect.y1 - priv->dst_rect.y0;
 
-    // Positive width and height
     int pwidth = vo->dwidth > 0 ? vo->dwidth : 1;
     int pheight = vo->dheight > 0 ? vo->dheight : 1;
 
+    // priv->width_cells and priv->height_cells are the width and height of dst_rect
+    // and they are not changed anywhere else outside this function.
+    // It is the chafa image output dimension which is output by chafa.
     priv->width_cells = priv->num_cols * priv->width / pwidth;
     priv->height_cells = priv->num_rows * priv->height / pheight;
 
@@ -255,7 +252,6 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
     if (mp_sws_reinit(priv->sws) < 0)
         return -1;
 
-    // Create canvas with new geometry
     priv->config = chafa_canvas_config_new();
 
     // Set geometry based on terminal character cells
@@ -264,28 +260,23 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
     chafa_canvas_config_set_geometry(priv->config, canvas_width, canvas_height);
     chafa_canvas_config_set_cell_geometry(priv->config, priv->width / canvas_width, priv->height / canvas_height);
 
-    // Set pixel mode
     if (priv->opts.pixel_mode >= 0 && priv->opts.pixel_mode < CHAFA_PIXEL_MODE_MAX) {
         chafa_canvas_config_set_pixel_mode(priv->config, priv->opts.pixel_mode);
     }
 
-    // Set canvas mode (color mode)
     if (priv->opts.canvas_mode >= 0 && priv->opts.canvas_mode < CHAFA_CANVAS_MODE_MAX) {
         chafa_canvas_config_set_canvas_mode(priv->config, priv->opts.canvas_mode);
     }
 
-    // Set dither mode
     if (priv->opts.dither_mode >= 0 && priv->opts.dither_mode < CHAFA_DITHER_MODE_MAX) {
         chafa_canvas_config_set_dither_mode(priv->config, priv->opts.dither_mode);
     }
 
-    // Set work factor (quality)
     if (priv->opts.work_factor > 0) {
         chafa_canvas_config_set_work_factor(priv->config,
                                         (gfloat)priv->opts.work_factor / 100.0f);
     }
 
-    // Set symbol map
     if (!priv->symbol_map) {
         priv->symbol_map = chafa_symbol_map_new();
         chafa_symbol_map_add_by_tags(priv->symbol_map, CHAFA_SYMBOL_TAG_ALL);
@@ -314,7 +305,6 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
             return -1;
     }
 
-    // Create canvas
     priv->canvas = chafa_canvas_new(priv->config);
     if (!priv->canvas) {
         MP_ERR(vo, "Failed to create Chafa canvas\n");
@@ -399,7 +389,6 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
     };
     osd_draw_on_image(vo->osd, dim, mpi ? mpi->pts : 0, 0, priv->frame);
 
-    // Draw to Chafa canvas
     chafa_canvas_draw_all_pixels(priv->canvas,
                                    priv->pixel_type,
                                    priv->frame->planes[0],
@@ -431,18 +420,16 @@ static void flip_page(struct vo *vo)
     if (priv->canvas == NULL)
         return;
 
-    // Generate output from canvas
     chafa_canvas_print_rows(priv->canvas, priv->term_info, &output, &rows);
 
 
     for (int i = 0; output [i]; i++)
     {
-        // Go to the offset row and column
+        // Go to the offset row and column, then display the image
         gchar pos_buf[64];
         g_snprintf(pos_buf, sizeof(pos_buf), TERM_ESC_GOTO_YX, priv->top + i , priv->left);
         chafa_strwrite(pos_buf);
 
-        // Write the output
         chafa_write(output[i]->str, output[i]->len, stdout);
     }
 
