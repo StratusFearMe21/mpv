@@ -462,6 +462,12 @@ static int preinit(struct vo *vo)
     priv->term_info = chafa_term_db_detect(chafa_term_db_get_default (), envp);
     g_strfreev (envp);
 
+    if (priv->opts.pixel_mode == CHAFA_PIXEL_MODE_MAX)
+        priv->opts.pixel_mode = chafa_term_info_get_best_pixel_mode(priv->term_info);
+
+    if (priv->opts.canvas_mode == CHAFA_CANVAS_MODE_MAX)
+        priv->opts.canvas_mode = chafa_term_info_get_best_canvas_mode(priv->term_info);
+
     // Comment from Chafa repo
     /* Chafa may create and destroy GThreadPools multiple times while rendering
      * an image. This reduces thread churn and saves a decent amount of CPU. */
@@ -515,8 +521,8 @@ const struct vo_driver video_out_chafa = {
     .uninit = uninit,
     .priv_size = sizeof(struct priv),
     .priv_defaults = &(const struct priv) {
-        .opts.pixel_mode = CHAFA_PIXEL_MODE_SYMBOLS,
-        .opts.canvas_mode = CHAFA_CANVAS_MODE_TRUECOLOR,
+        .opts.pixel_mode = CHAFA_PIXEL_MODE_MAX,
+        .opts.canvas_mode = CHAFA_CANVAS_MODE_MAX,
         .opts.dither_mode = CHAFA_DITHER_MODE_NONE,
         .opts.work_factor = 50,
         .opts.pad_y = -1,
@@ -528,11 +534,13 @@ const struct vo_driver video_out_chafa = {
         {"width", OPT_INT(opts.width)},
         {"height", OPT_INT(opts.height)},
         {"pixel-mode", OPT_CHOICE(opts.pixel_mode,
+            {"auto", CHAFA_PIXEL_MODE_MAX},
             {"symbols", CHAFA_PIXEL_MODE_SYMBOLS},
             {"sixels", CHAFA_PIXEL_MODE_SIXELS},
             {"kitty", CHAFA_PIXEL_MODE_KITTY},
             {"iterm2", CHAFA_PIXEL_MODE_ITERM2})},
         {"canvas-mode", OPT_CHOICE(opts.canvas_mode,
+            {"auto", CHAFA_CANVAS_MODE_MAX},
             {"truecolor", CHAFA_CANVAS_MODE_TRUECOLOR},
             {"256", CHAFA_CANVAS_MODE_INDEXED_256},
             {"240", CHAFA_CANVAS_MODE_INDEXED_240},
