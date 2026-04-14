@@ -253,6 +253,10 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
     if (mp_sws_reinit(priv->sws) < 0)
         return -1;
 
+    gchar **envp = g_get_environ();
+    priv->term_info = chafa_term_db_detect(chafa_term_db_get_default (), envp);
+    g_strfreev (envp);
+
     priv->config = chafa_canvas_config_new();
 
     // Set geometry based on terminal character cells
@@ -267,10 +271,16 @@ static int update_chafa_canvas(struct vo *vo, struct mp_image_params *params)
 
     if (priv->opts.canvas_mode >= 0 && priv->opts.canvas_mode < CHAFA_CANVAS_MODE_MAX) {
         chafa_canvas_config_set_canvas_mode(priv->config, priv->opts.canvas_mode);
+    } else {
+        ChafaCanvasMode mode = chafa_term_info_get_best_canvas_mode(priv->term_info);
+        chafa_canvas_config_set_canvas_mode(priv->config, mode);
     }
 
     if (priv->opts.dither_mode >= 0 && priv->opts.dither_mode < CHAFA_DITHER_MODE_MAX) {
         chafa_canvas_config_set_dither_mode(priv->config, priv->opts.dither_mode);
+    } else {
+        ChafaPixelMode mode = chafa_term_info_get_best_pixel_mode(priv->term_info);
+        chafa_canvas_config_set_pixel_mode(priv->config, mode);
     }
 
     if (priv->opts.work_factor > 0) {
@@ -457,16 +467,6 @@ static int preinit(struct vo *vo)
     priv->canvas = NULL;
     priv->config = NULL;
     priv->symbol_map = NULL;
-
-    gchar **envp = g_get_environ();
-    priv->term_info = chafa_term_db_detect(chafa_term_db_get_default (), envp);
-    g_strfreev (envp);
-
-    if (priv->opts.pixel_mode == CHAFA_PIXEL_MODE_MAX)
-        priv->opts.pixel_mode = chafa_term_info_get_best_pixel_mode(priv->term_info);
-
-    if (priv->opts.canvas_mode == CHAFA_CANVAS_MODE_MAX)
-        priv->opts.canvas_mode = chafa_term_info_get_best_canvas_mode(priv->term_info);
 
     // Comment from Chafa repo
     /* Chafa may create and destroy GThreadPools multiple times while rendering
