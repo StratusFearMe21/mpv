@@ -677,8 +677,91 @@ Available video output drivers are:
         noise
             Error diffusion dithering (Floyd-Steinberg or similar).
 
-    ``--vo-chafa-work-factor=<work_factor>`` (default: 50)
-        Sets the work/quality tradeoff factor. A higher value means more time and memory will be spent towards a higher quality output.
+    ``--vo-chafa-work-factor=<work_factor>`` (default: 0.5)
+        A value between 0 and 1 that sets the work/quality tradeoff factor.
+        A higher value means more time and memory will be spent towards a
+        higher quality output.
+
+    ``--vo-chafa-color-extractor=<extractor>``
+        Selects the method used to extract representative colors for each symbol.
+        Can be one of the following:
+
+        average (Default)
+            Use the average colors of each symbol's coverage area.
+        median
+            Use the median colors of each symbol's coverage area.
+
+    ``--vo-chafa-color-space=<color_space>``
+        Selects the color space used for color calculations.
+        Can be one of the following:
+
+        rgb (Default)
+            RGB color space. Fast but imprecise.
+        din99d
+            DIN99d color space. Slower, but good perceptual color precision.
+
+    ``--vo-chafa-dither-grain-width=<width>``, ``--vo-chafa-dither-grain-height=<height>`` (default: -1)
+        Sets the dither grain size in pixels. Both dimensions must be specified
+        to take effect. If set to -1 (default), the library default is used.
+
+    ``--vo-chafa-dither-intensity=<intensity>`` (range: 0.0-1.0, default: -1)
+        Sets the intensity of dithering. A higher value produces more visible
+        dither patterns. If set to -1 (default), the library default is used.
+
+    ``--vo-chafa-transparency-threshold=<threshold>`` (range: 0.0-1.0, default: -1)
+        Sets the alpha value threshold at which pixels are considered transparent.
+        Pixels with alpha below this value are treated as fully transparent.
+        If set to -1 (default), the library default is used.
+
+    ``--vo-chafa-fg-color=<#RRGGBB>`` (default: auto)
+        Sets the foreground color in hex format (#RRGGBB). When set, overrides
+        the terminal's default foreground color for text rendering.
+
+    ``--vo-chafa-bg-color=<#RRGGBB>`` (default: auto)
+        Sets the background color in hex format (#RRGGBB). When set, overrides
+        the terminal's default background color.
+
+    ``--vo-chafa-preprocessing=<yes|no>`` (default: yes)
+        Enables or disables preprocessing of the input image. Preprocessing can
+        improve output quality at the cost of additional processing time.
+
+    ``--vo-chafa-fg-only=<yes|no>`` (default: no)
+        When enabled, renders using only foreground colors (no background colors).
+        This can produce cleaner output on some terminals.
+
+    ``--vo-chafa-optimizations=<opt1,opt2,...>``
+        Enables output optimizations to reduce terminal escape sequences and
+        improve performance. Multiple optimizations can be specified.
+        Can include any of the following:
+
+        reuse-attributes
+            Suppress redundant SGR control sequences.
+        skip-cells
+            Reserved for future use.
+        repeat-cells
+            Use REP sequence to compress repeated runs of similar cells.
+        all
+            Enable all optimizations.
+        none
+            Disable all optimizations.
+
+    ``--vo-chafa-passthrough=<mode>``
+        Enables passthrough guards for terminal multiplexers.
+        Can be one of the following:
+
+        none (Default)
+            No passthrough guards will be used.
+        screen
+            Passthrough guards for GNU Screen will be used.
+        tmux
+            Passthrough guards for tmux will be used.
+
+    ``--vo-chafa-symbol-selectors=<string>``
+        Specifies symbols to use via a selector string.
+        This provides fine-grained control over which symbols are available.
+        The selector syntax allows complex combinations of symbol tags.
+        If not specified, defaults to all symbols.
+        See chafa documentation for selector string syntax examples.
 
 ``image``
     Output each frame into an image file in the current directory. Each file
