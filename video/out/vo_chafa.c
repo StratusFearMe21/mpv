@@ -97,8 +97,7 @@ static void dealloc_canvas_and_buffers(struct vo *vo)
     }
 
     if (priv->frame) {
-        talloc_free(priv->frame);
-        priv->frame = NULL;
+        TA_FREEP(&priv->frame);
     }
 }
 
@@ -408,7 +407,7 @@ static bool draw_frame(struct vo *vo, struct vo_frame *frame)
                                    priv->frame->stride[0]);
 
     if (mpi)
-        talloc_free(mpi);
+        TA_FREEP(&mpi);
 
 done:
     return VO_TRUE;
