@@ -654,6 +654,12 @@ static int preinit(struct vo *vo)
     priv->term_info = chafa_term_db_detect(chafa_term_db_get_default (), envp);
     g_strfreev (envp);
 
+    if (opts->pixel_mode == CHAFA_PIXEL_MODE_MAX)
+        opts->pixel_mode = chafa_term_info_get_best_pixel_mode(priv->term_info);
+
+    if (opts->canvas_mode == CHAFA_CANVAS_MODE_MAX)
+        opts->canvas_mode = chafa_term_info_get_best_canvas_mode(priv->term_info);
+
     // Comment from Chafa repo
     /* Chafa may create and destroy GThreadPools multiple times while rendering
      * an image. This reduces thread churn and saves a decent amount of CPU. */
